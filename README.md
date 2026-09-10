@@ -59,3 +59,7 @@ Cada loader registra opções para:
 ## Cache offline
 
 O cache é salvo somente depois que o arquivo remoto passa pela validação de tamanho, sintaxe e SHA-256 e a execução inicial não gera erro síncrono. Se o GitHub falhar em uma abertura posterior, o loader tenta executar esse cache.
+
+## Loader MATRIZ
+
+O arquivo `loaders/NEXUS_LOADER_MATRIZ.user.js` é destinado ao computador administrativo. Ele usa o repositório `jhonesfeliciano/nexus-tampermonkey`, identifica solicitações pendentes de TERESINA/PALMAS no Firebase e carrega somente o canal necessário. Quando não há solicitação, exibe um seletor manual. Possui cache separado por canal e retoma automaticamente uma captura após recarregamento do Oracle APEX.

@@ -22,7 +22,7 @@
         channel: 'teresina',
         label: 'TERESINA',
         branch: 'main',
-        defaultRepo: '', // opcional: coloque aqui usuario/repositorio. Se vazio, o loader perguntará na primeira execução.
+        defaultRepo: 'jhonesfeliciano/nexus-tampermonkey', // repositório já configurado
         repoStorageKey: 'nexusLoaderRepo_teresina',
         cacheStorageKey: 'nexusLoaderCache_teresina',
         timeoutMs: 30000,
