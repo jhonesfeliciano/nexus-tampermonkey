@@ -1,0 +1,36 @@
+NEXUS — PASSO A PASSO RÁPIDO
+
+1) No GitHub, clique em New repository.
+2) Nome sugerido: nexus-tampermonkey
+3) Marque Public e crie o repositório.
+4) Entre no repositório e use Add file > Upload files.
+5) Extraia este ZIP no computador.
+6) Envie estes itens para a RAIZ do repositório:
+   - manifest.json
+   - pasta releases
+   - pasta loaders
+   - README.md (opcional, mas recomendado)
+7) Confirme o commit.
+
+8) No Tampermonkey, DESATIVE o script completo antigo de TERESINA/PALMAS.
+9) Instale somente o loader da cidade necessária:
+   - loaders/NEXUS_LOADER_TERESINA.user.js
+   - loaders/NEXUS_LOADER_PALMAS.user.js
+10) Abra sistema.romancemoda.com.br e entre em Notas Perdidas.
+11) Quando o loader pedir o repositório, digite:
+    SEU_USUARIO/nexus-tampermonkey
+12) Recarregue a página.
+13) O painel CICLOS deve aparecer normalmente.
+
+ATUALIZAÇÕES FUTURAS
+- Crie releases/2.0.0/teresina/nexus-teresina.js e/ou palmas/nexus-palmas.js.
+- Atualize version/path/sha256 no manifest.json.
+- Recarregue a página: o loader pega a versão nova.
+
+ROLLBACK
+- Se der problema, volte o manifest.json para a versão 1.9.0.
+
+IMPORTANTE
+- O repositório deve ser público para este modelo sem token.
+- Não publique senha, token, chave privada ou credencial no GitHub.
+- Não deixe o loader e o script completo antigo habilitados ao mesmo tempo.

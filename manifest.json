@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-10T06:30:00-03:00",
+  "description": "Manifesto dos scripts dinâmicos do Nexus/Tampermonkey.",
+  "channels": {
+    "teresina": {
+      "version": "1.9.0",
+      "path": "releases/1.9.0/teresina/nexus-teresina.js",
+      "sha256": "ef0bf9b38ee0b3d29ab9f30737413317e9e2af9ca192ee6e598db72b6b12bffb",
+      "ecosystemKey": "teresina",
+      "ecosystemName": "TERESINA"
+    },
+    "palmas": {
+      "version": "1.9.0",
+      "path": "releases/1.9.0/palmas/nexus-palmas.js",
+      "sha256": "a732bb1cb184b98071d063fb137283f2ba71827cab85149a8fb8a24969f7e57c",
+      "ecosystemKey": "palmas",
+      "ecosystemName": "PALMAS"
+    }
+  }
+}
