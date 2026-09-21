@@ -63,3 +63,7 @@ O cache é salvo somente depois que o arquivo remoto passa pela validação de t
 ## Loader MATRIZ
 
 O arquivo `loaders/NEXUS_LOADER_MATRIZ.user.js` é destinado ao computador administrativo. Ele usa o repositório `jhonesfeliciano/nexus-tampermonkey`, identifica solicitações pendentes de TERESINA/PALMAS no Firebase e carrega somente o canal necessário. Quando não há solicitação, exibe um seletor manual. Possui cache separado por canal e retoma automaticamente uma captura após recarregamento do Oracle APEX.
+
+
+## v2.0.0 - correção das notas atrasadas por semana
+A semana operacional de cada nota passa a ser calculada por **Semana Distribuição + 6 semanas**. A Semana Cobrança continua no payload para auditoria, mas não desloca uma nota remarcada para outra semana. O manifest já aponta para 2.0.0 e a 1.9.0 foi mantida para rollback.

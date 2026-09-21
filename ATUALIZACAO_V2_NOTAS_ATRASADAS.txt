@@ -1,0 +1,13 @@
+NEXUS - CORREÇÃO NOTAS ATRASADAS v2.0.0
+
+Problema identificado:
+- A integração v1.9 agrupava a semana principal pela coluna Semana Cobrança.
+- Quando uma nota era remarcada, essa cobrança podia mudar e a nota atrasada acabava aparecendo em outra semana.
+
+Correção:
+- Semana de referência = Semana Distribuição + 6 semanas.
+- Qtd Remarcada > 0 continua classificando a nota como ATRASADA.
+- Qtd Remarcada <= 0 continua classificando como EM DIA.
+- Semana Cobrança e Semana Distribuição continuam registradas para auditoria/compatibilidade.
+- 1.9.0 continua no pacote para rollback.
+- manifest.json já ativa 2.0.0.

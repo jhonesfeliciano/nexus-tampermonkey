@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-10T06:30:00-03:00",
-  "description": "Manifesto dos scripts dinâmicos do Nexus/Tampermonkey.",
+  "updatedAt": "2026-09-21T14:55:00-03:00",
+  "description": "Manifesto Nexus/Tampermonkey. v2.0.0 corrige a semana das notas atrasadas usando Semana Distribuição + 6 como referência, mantendo Cobrança/Distribuição para auditoria.",
   "channels": {
     "teresina": {
-      "version": "1.9.0",
-      "path": "releases/1.9.0/teresina/nexus-teresina.js",
-      "sha256": "ef0bf9b38ee0b3d29ab9f30737413317e9e2af9ca192ee6e598db72b6b12bffb",
+      "version": "2.0.0",
+      "path": "releases/2.0.0/teresina/nexus-teresina.js",
+      "sha256": "7c781df06d0eace80809b6d5620c08bd7bd9a0a2ee4b2e4fa94535f14044516c",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
-      "version": "1.9.0",
-      "path": "releases/1.9.0/palmas/nexus-palmas.js",
-      "sha256": "a732bb1cb184b98071d063fb137283f2ba71827cab85149a8fb8a24969f7e57c",
+      "version": "2.0.0",
+      "path": "releases/2.0.0/palmas/nexus-palmas.js",
+      "sha256": "8f9cf3d6498f261fcc5ed6ea7b55de538da762b65c450cc76921a27c6a59d9a9",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
