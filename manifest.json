@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T15:35:00-03:00",
-  "description": "Manifesto Nexus/Tampermonkey. v2.0.1 mantém a correção das notas atrasadas por Semana Distribuição + 6 e adiciona codificação segura de todas as chaves dinâmicas antes do envio ao Firebase Realtime Database.",
+  "updatedAt": "2026-09-21T15:53:45-03:00",
+  "description": "v2.0.2 restaura a Semana Cobrança como calendário autoritativo do relatório Notas Perdidas (mesma lógica funcional da v1.9), mantendo confirmação de setores zerados, codificação segura de chaves Firebase, cache/loader GitHub e compatibilidade com dados legados.",
   "channels": {
     "teresina": {
-      "version": "2.0.1",
-      "path": "releases/2.0.1/teresina/nexus-teresina.js",
-      "sha256": "52887b849806a7eb82c072daea17903049b11e1e983facea69e13db46e7be947",
+      "version": "2.0.2",
+      "path": "releases/2.0.2/teresina/nexus-teresina.js",
+      "sha256": "656698ccf2446df3b57beb88dfafcf5547fc9cd7789fbe3e200abd92e5729ad7",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
-      "version": "2.0.1",
-      "path": "releases/2.0.1/palmas/nexus-palmas.js",
-      "sha256": "f05a5532ea0566c6c0826d4ae9fd33166795e09465387c49daef75075ebd404a",
+      "version": "2.0.2",
+      "path": "releases/2.0.2/palmas/nexus-palmas.js",
+      "sha256": "b0d0acbb56f0c7bef79772b0750c7ea6801ed8817afd43c14c76b0da3ca2d705",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
