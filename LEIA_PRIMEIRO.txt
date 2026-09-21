@@ -1,32 +1,27 @@
-NEXUS — PACOTE GITHUB + LOADERS CONFIGURADOS
+NEXUS - ATUALIZAÇÃO 2.0.1 - CHAVES FIREBASE SEGURAS
+===================================================
 
-Repositório já configurado nos dois loaders:
-jhonesfeliciano/nexus-tampermonkey
+Correção principal:
+- O Firebase Realtime Database não aceita . # $ [ ] / nem caracteres de controle em chaves.
+- O payload de Notas Perdidas usa nomes de cidades como chaves de agrupamento.
+- A v2.0.0 também passou a ter a chave de auditoria Semana/Ano (ex.: 40/2026), e a barra / é inválida no Firebase.
 
-ESTRUTURA:
-- manifest.json
-- releases/1.9.0/teresina/nexus-teresina.js
-- releases/1.9.0/palmas/nexus-palmas.js
-- loaders/NEXUS_LOADER_TERESINA.user.js
-- loaders/NEXUS_LOADER_PALMAS.user.js
-- README.md
-- PASSO_A_PASSO_GITHUB.txt
+A v2.0.1 codifica SOMENTE as chaves dos objetos antes do PUT no Firebase e mantém os valores originais.
+Exemplos internos no Firebase:
+- "S. João" -> "S%2E João"
+- "40/2026" -> "40%2F2026"
+- "A#1" -> "A%231"
 
-INSTALAÇÃO:
-1. Mantenha esta mesma estrutura no repositório GitHub.
-2. No computador de TERESINA, instale apenas loaders/NEXUS_LOADER_TERESINA.user.js.
-3. No computador de PALMAS, instale apenas loaders/NEXUS_LOADER_PALMAS.user.js.
-4. Desative os scripts antigos equivalentes para evitar dois painéis ao mesmo tempo.
-5. Recarregue a página do sistema Romance Moda.
+O HTML v2.0.1 reconhece firebaseKeyEncoding=percent-v1 e restaura os nomes originais antes de aplicar/exibir os dados.
+Assim, o usuário continua vendo "S. João" e não a forma codificada.
 
-Os loaders já apontam para:
-https://github.com/jhonesfeliciano/nexus-tampermonkey
+Também continua valendo a correção v2.0.0:
+- Semana de referência das notas = Semana Distribuição + 6.
+- Qtd Remarcada > 0 = Atrasada.
+- Zero em qtdAtrasadas é respeitado corretamente.
 
-Eles consultam a branch main, leem manifest.json e carregam a versão aprovada.
-
-LOADER MATRIZ
--------------
-Para o computador administrativo/Matriz, instale apenas:
-loaders/NEXUS_LOADER_MATRIZ.user.js
-
-Ele identifica automaticamente solicitações de TERESINA ou PALMAS e, se não houver solicitação, permite escolher manualmente o perfil. O repositório jhonesfeliciano/nexus-tampermonkey já está configurado.
+PUBLICAÇÃO NO GITHUB:
+1. Envie primeiro releases/2.0.1/teresina/nexus-teresina.js
+2. Envie releases/2.0.1/palmas/nexus-palmas.js
+3. Só depois substitua manifest.json
+4. Os loaders já instalados NÃO precisam ser reinstalados.
