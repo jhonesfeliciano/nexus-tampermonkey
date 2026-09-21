@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T15:53:45-03:00",
-  "description": "v2.0.2 restaura a Semana Cobrança como calendário autoritativo do relatório Notas Perdidas (mesma lógica funcional da v1.9), mantendo confirmação de setores zerados, codificação segura de chaves Firebase, cache/loader GitHub e compatibilidade com dados legados.",
+  "updatedAt": "2026-09-21T16:30:00-03:00",
+  "description": "v2.0.4 replica no Atualizar pelo Sistema a regra funcional da importação por arquivo: cada Região usa todas as notas capturadas; Qtd Remarcada > 0 = Atrasada e Qtd Remarcada = 0 = Em Dia. A soma é validada contra a Contagem do rodapé da própria Região no APEX. Mantém botão Voltar corrigido, setores zerados, chaves Firebase seguras e demais recursos atuais.",
   "channels": {
     "teresina": {
-      "version": "2.0.2",
-      "path": "releases/2.0.2/teresina/nexus-teresina.js",
-      "sha256": "656698ccf2446df3b57beb88dfafcf5547fc9cd7789fbe3e200abd92e5729ad7",
+      "version": "2.0.4",
+      "path": "releases/2.0.4/teresina/nexus-teresina.js",
+      "sha256": "faa200080c2a5c910b20d73a17ad64387ac5120aa4585b2a186d411afccac5e5",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
-      "version": "2.0.2",
-      "path": "releases/2.0.2/palmas/nexus-palmas.js",
-      "sha256": "b0d0acbb56f0c7bef79772b0750c7ea6801ed8817afd43c14c76b0da3ca2d705",
+      "version": "2.0.4",
+      "path": "releases/2.0.4/palmas/nexus-palmas.js",
+      "sha256": "670b50603cdc779b1d215bfe4890d1c86762b6ddc117b463275a0d52ab6afd9e",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
