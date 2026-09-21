@@ -1,0 +1,23 @@
+VALIDAÇÃO DA CORREÇÃO — NOTAS ATRASADAS v2.0.2
+
+Causa identificada:
+- A v2.0.0/v2.0.1 passou a usar Distribuição + 6 como semana principal.
+- Isso funciona para notas em dia, porque normalmente Cobrança = Distribuição + 6.
+- Para notas remarcadas (Qtd Remarcada > 0), a coluna Cobrança já foi deslocada para a semana atual.
+- Portanto, usar Distribuição + 6 movia as atrasadas para semanas antigas e fazia elas sumirem da semana correta.
+
+Teste feito com o HTML real da página Notas Perdidas enviado em 21/09/2026:
+- 131 linhas válidas de notas analisadas na captura.
+- 8 notas com Qtd Remarcada > 0.
+- Pela Semana Cobrança (regra restaurada): semana 37 = 7 atrasadas; semana 40 = 1 atrasada.
+- Pela regra incorreta Distribuição + 6: essas mesmas notas seriam espalhadas pelas semanas 28, 29, 33, 34, 35 e 36.
+
+Correção v2.0.2:
+1. Semana Cobrança volta a ser autoritativa no payload e no HTML.
+2. Qtd Remarcada > 0 continua classificando a nota como atrasada.
+3. Distribuição permanece disponível para auditoria e compatibilidade, mas não substitui Cobrança.
+4. Referência Distribuição + 6 fica apenas como diagnóstico/fallback final.
+5. Modal de clientes segue a mesma regra de Cobrança.
+6. Ausência de uma semana de Cobrança não reaproveita dados de outra semana.
+7. Codificação segura de chaves do Firebase da v2.0.1 foi mantida.
+8. Confirmação de setores zerados e demais recursos atuais foram preservados.

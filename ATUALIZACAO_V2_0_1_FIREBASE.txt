@@ -1,0 +1,27 @@
+NEXUS - ATUALIZAÇÃO 2.0.1 - CHAVES FIREBASE SEGURAS
+===================================================
+
+Correção principal:
+- O Firebase Realtime Database não aceita . # $ [ ] / nem caracteres de controle em chaves.
+- O payload de Notas Perdidas usa nomes de cidades como chaves de agrupamento.
+- A v2.0.0 também passou a ter a chave de auditoria Semana/Ano (ex.: 40/2026), e a barra / é inválida no Firebase.
+
+A v2.0.1 codifica SOMENTE as chaves dos objetos antes do PUT no Firebase e mantém os valores originais.
+Exemplos internos no Firebase:
+- "S. João" -> "S%2E João"
+- "40/2026" -> "40%2F2026"
+- "A#1" -> "A%231"
+
+O HTML v2.0.1 reconhece firebaseKeyEncoding=percent-v1 e restaura os nomes originais antes de aplicar/exibir os dados.
+Assim, o usuário continua vendo "S. João" e não a forma codificada.
+
+Também continua valendo a correção v2.0.0:
+- Semana de referência das notas = Semana Distribuição + 6.
+- Qtd Remarcada > 0 = Atrasada.
+- Zero em qtdAtrasadas é respeitado corretamente.
+
+PUBLICAÇÃO NO GITHUB:
+1. Envie primeiro releases/2.0.1/teresina/nexus-teresina.js
+2. Envie releases/2.0.1/palmas/nexus-palmas.js
+3. Só depois substitua manifest.json
+4. Os loaders já instalados NÃO precisam ser reinstalados.

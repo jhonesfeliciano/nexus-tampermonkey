@@ -1,3 +1,8 @@
+# Nexus GitHub/Tampermonkey — v2.0.1
+
+## Correção Firebase
+A versão 2.0.1 codifica de forma reversível chaves dinâmicas incompatíveis com o Firebase Realtime Database (`. # $ [ ] /` e caracteres de controle). O HTML correspondente restaura automaticamente os nomes originais. A correção da semana das notas atrasadas da v2.0.0 foi preservada.
+
 # NEXUS — Loader Dinâmico GitHub + Tampermonkey
 
 Este pacote separa o Tampermonkey em dois loaders pequenos e mantém o código real versionado no GitHub.
