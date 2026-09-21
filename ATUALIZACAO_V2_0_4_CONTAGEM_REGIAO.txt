@@ -1,0 +1,8 @@
+NEXUS v2.0.4 - CONTAGEM POR REGIÃO
+
+1) GitHub: envie primeiro a pasta releases/2.0.4 e faça Commit.
+2) Depois envie/substitua manifest.json e faça outro Commit.
+3) Netlify: publique o novo index.html.
+4) Não reinstale os loaders.
+
+A regra do Sistema agora é a mesma da importação por arquivo: Região completa, Qtd Remarcada > 0 = Atrasada, Qtd Remarcada = 0 = Em Dia; a soma precisa bater com a Contagem do rodapé da Região.

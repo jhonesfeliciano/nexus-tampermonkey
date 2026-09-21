@@ -1,0 +1,20 @@
+VALIDAÇÃO v2.0.4 — NOTAS PERDIDAS / CONTAGEM POR REGIÃO
+
+Fonte analisada: página Notas Perdidas fornecida pelo usuário (Markdown(10)).
+Regra: Qtd Remarcada > 0 = Atrasada; Qtd Remarcada = 0 = Em Dia.
+A soma precisa bater com a Contagem do rodapé de cada Região.
+
+Região                         Contagem   Atrasadas   Em Dia   Soma   Status
+Boqueirao do Piaui-PI              39           7       32     39   OK
+Campo Maior II-PI                   20           1       19     20   OK
+Campo Maior-PI                       9           0        9      9   OK
+Cocal de Telha-PI                   16           0       16     16   OK
+Sigefredo Pacheco-PI                 6           0        6      6   OK
+
+TOTAL                               90           8       82     90   OK
+
+O Atualizar pelo Sistema v2.0.4 aplica o mesmo princípio da importação por arquivo:
+- não filtra a Região por Semana Cobrança para formar Em Dia/Atrasadas;
+- classifica todas as notas daquela Região pela Qtd Remarcada;
+- captura a Contagem do rodapé APEX;
+- bloqueia o envio/aplicação caso a soma classificada não feche com a Contagem.

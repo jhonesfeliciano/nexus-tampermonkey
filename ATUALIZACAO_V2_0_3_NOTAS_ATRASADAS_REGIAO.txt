@@ -1,0 +1,22 @@
+NEXUS — ATUALIZAÇÃO v2.0.3 — NOTAS ATRASADAS POR REGIÃO
+
+CORREÇÃO PRINCIPAL
+- Qtd Remarcada > 0 = ATRASADA.
+- As ATRASADAS permanecem vinculadas à mesma REGIÃO/SETOR, mesmo quando a coluna Cobrança foi remarcada para outra semana.
+- As notas EM DIA continuam filtradas pela Semana Cobrança que está sendo confirmada.
+- Ao mover a primeira semana +6, as atrasadas da região não desaparecem.
+
+EXEMPLO VALIDADO NO HTML REAL DA PÁGINA NOTAS PERDIDAS
+- Teresina 2-PI / Semana 42:
+  - comportamento anterior: 0 atrasadas, pois filtrava tudo por Cobrança 42;
+  - comportamento corrigido: 7 atrasadas da região + 28 em dia da Cobrança 42.
+
+COMO PUBLICAR NO GITHUB
+1. Envie primeiro a pasta releases/2.0.3/ inteira.
+2. Faça o commit e confira os dois arquivos no GitHub.
+3. Só depois substitua o manifest.json da raiz.
+4. Faça outro commit.
+5. Não reinstale os loaders; eles continuam os mesmos.
+
+REPOSITÓRIO CONFIGURADO NOS LOADERS
+jhonesfeliciano/nexus-tampermonkey
