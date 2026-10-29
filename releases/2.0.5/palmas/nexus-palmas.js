@@ -26,37 +26,15 @@
         maxPaginationPages: 250
     };
 
-    const KNOWN_APEX_HEADERS = Object.freeze({
-        C340594368028423106: 'Vendedora',
-        C340594797138423107: 'Nr Nota',
-        C340595124764423107: 'Distribuição',
-        C340595598458423107: 'Cobrança',
-        C340596342156423107: 'Situação',
-        C339887617840488321: 'Vlr Total Nota',
-        C339887789890488322: 'Vlr Devolução',
-        C339887806566488323: 'Total Venda',
-        C339888073421488325: 'Comissão',
-        C339888163875488326: 'Valor Comissão',
-        C340599107366423109: 'Valor Pago',
-        C339888259775488327: 'Saldo',
-        C339888332962488328: 'Ir p/ Nota',
-        C339888493534488329: 'Qtd Remarcada',
-        C24085049564272648: 'CPF',
-        C24085189120272649: 'Endereço',
-        C24085212233272650: 'Telefones',
-        C350332264798817801: 'Cidade',
-        C1109502661181960236: 'Distribuidor Atende'
-    });
-    const APEX_NOTE_NUMBER_HEADER_ID = 'C340594797138423107';
-    const APEX_QTD_REMARCADA_HEADER_ID = 'C339888493534488329';
-    const APEX_CITY_HEADER_ID = 'C350332264798817801';
-
     let panel = null;
     let profileSelect = null;
     let actionButton = null;
     let statusBox = null;
     let matchBox = null;
     let currentRequest = null;
+    const cancellationSeenKey = CONFIG.pendingStorageKey + '_lastCancelNotified';
+    const scriptStartTime = Date.now();
+    const observedRequestIds = new Set();
     let availableProfiles = [];
     let pollingTimer = null;
     let isBusy = false;
@@ -104,22 +82,149 @@
         await init();
     }
 
+    // CANCELAMENTO V1: apenas solicitação de Notas Perdidas; nunca interfere em Compra/Ticket.
+    function isNotesRequest(request) {
+        return !!request && request.type !== 'purchaseMetrics';
+    }
+
+
+    function showCancelModal(profile) {
+        const modalId = `${CONFIG.panelId}-cancel-modal`;
+        document.getElementById(modalId)?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = modalId;
+        overlay.setAttribute('role', 'alertdialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.64);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+        const card = document.createElement('div');
+        card.style.cssText = 'max-width:390px;width:100%;padding:25px 23px;border-radius:18px;background:#fff;color:#172033;text-align:center;font:14px/1.5 Arial,sans-serif;box-shadow:0 18px 55px rgba(0,0,0,.32);';
+        const title = document.createElement('h3');
+        title.style.cssText = 'font-size:20px;font-weight:700;margin:0 0 10px;color:#dc2626;';
+        title.textContent = 'Solicitação cancelada';
+        const detail = document.createElement('p');
+        detail.style.cssText = 'margin:0 0 18px;color:#334155;';
+        detail.textContent = `O pedido de Notas Perdidas de “${profile || 'distribuidor'}” foi cancelado pelo Nexus. O script está zerado e aguardando outra solicitação.`;
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.textContent = 'OK, entendi';
+        ok.style.cssText = 'width:100%;padding:12px;border:0;border-radius:10px;background:#dc2626;color:white;font-weight:700;cursor:pointer;font-size:14px;';
+        ok.onclick = () => overlay.remove();
+        card.append(title,detail,ok);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        ok.focus();
+    }
+
+    function showCancellationNotice(request) {
+        if (!request || !isNotesRequest(request)) return;
+        const id = String(request.requestId || '');
+        if (!id || GM_getValue(cancellationSeenKey, '') === id) return;
+        GM_setValue(cancellationSeenKey, id);
+        const capture = GM_getValue(CONFIG.pendingStorageKey, null);
+        if (capture && String(capture.requestId) === id) GM_deleteValue(CONFIG.pendingStorageKey);
+        if (currentRequest && String(currentRequest.requestId) === id) currentRequest = null;
+        isBusy = false;
+        if (actionButton) { unlockPanel(); actionButton.textContent = 'Filtrar e enviar dados'; }
+        setStatus('Solicitação cancelada. Aguardando nova solicitação do Nexus.', 'warning');
+        if (matchBox) matchBox.textContent = 'Aguardando nova solicitação.';
+        showCancelModal(request.profile);
+    }
+
+    function scanCancelledRequests(requests) {
+        for (const request of requests) {
+            if (request.status !== 'cancelled' || !isNotesRequest(request)) continue;
+            const cancelledAt = Number(request.cancelledAt || 0);
+            const capture = GM_getValue(CONFIG.pendingStorageKey, null);
+            const tracked = observedRequestIds.has(String(request.requestId))
+                || (currentRequest && currentRequest.requestId === request.requestId)
+                || (capture && capture.requestId === request.requestId)
+                || (cancelledAt >= scriptStartTime);
+            if (tracked) showCancellationNotice(request);
+        }
+        for (const request of requests) {
+            if (request.status === 'pending' && isNotesRequest(request)) observedRequestIds.add(String(request.requestId));
+        }
+    }
+
+    function cancelledError(request) {
+        const error = new Error('Solicitação cancelada ou substituída no Firebase.');
+        error.name = 'CiclosCancelled';
+        error.cancelledRequest = request;
+        return error;
+    }
+
+
+
+    // Finalização condicional (ETag RTDB): uma confirmação de cancelamento nunca vira "done" por PATCH atrasado.
+    async function finishRequestIfPending(capture, fields) {
+        const key = capture.requestKey || capture.profileKey;
+        const url = `${CONFIG.firebaseBase}/${CONFIG.integrationPath}/requests/${key}.json`;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const snapshot = await new Promise((resolve, reject) => GM_xmlhttpRequest({
+                method:'GET', url, headers:{'X-Firebase-ETag':'true'}, timeout:30000,
+                onload(r) {
+                    if (r.status !== 200) return reject(new Error(`Firebase HTTP ${r.status}`));
+                    const etag = /^etag:\s*(.+)$/im.exec(r.responseHeaders || '')?.[1]?.trim();
+                    if (!etag) return reject(new Error('Firebase não retornou ETag para conclusão segura.'));
+                    try { resolve({value:JSON.parse(r.responseText), etag}); } catch(e) { reject(e); }
+                }, onerror:()=>reject(new Error('Erro de conexão com o Firebase.')),
+                ontimeout:()=>reject(new Error('Tempo esgotado no Firebase.'))
+            }));
+            if (!snapshot.value || snapshot.value.requestId !== capture.requestId || snapshot.value.status !== 'pending') {
+                throw cancelledError(snapshot.value?.status === 'cancelled' ? snapshot.value : {
+                    requestId:capture.requestId, profile:capture.profile, type:'system'
+                });
+            }
+            const updated = {...snapshot.value, ...fields};
+            const status = await new Promise((resolve,reject) => GM_xmlhttpRequest({
+                method:'PUT', url,
+                headers:{'Content-Type':'application/json','If-Match':snapshot.etag},
+                data:JSON.stringify(updated), timeout:30000,
+                onload:r=>resolve(r.status),
+                onerror:()=>reject(new Error('Falha de rede ao concluir solicitação.')),
+                ontimeout:()=>reject(new Error('Tempo esgotado ao concluir solicitação.'))
+            }));
+            if (status >= 200 && status < 300) return;
+            if (status !== 412) throw new Error(`Firebase HTTP ${status} ao concluir solicitação.`);
+        }
+        throw new Error('Solicitação alterada durante a conclusão. Nenhum status foi sobrescrito.');
+    }
+
+    async function guardActiveCapture(capture) {
+        if (!capture || String(capture.requestId || '').startsWith('manual-')) return;
+        const key = capture.requestKey || capture.profileKey;
+        const request = await firebaseRequest('GET', `${CONFIG.integrationPath}/requests/${key}.json`);
+        if (!request || String(request.requestId || '') !== String(capture.requestId || '') || request.status !== 'pending') {
+            throw cancelledError(request && request.status === 'cancelled' ? request : {
+                requestId:capture.requestId, profile:capture.profile, status:'cancelled', type:'system'
+            });
+        }
+    }
+
+    async function watchBusyCancellation() {
+        const capture = GM_getValue(CONFIG.pendingStorageKey, null);
+        const request = capture || currentRequest;
+        if (!request || String(request.requestId || '').startsWith('manual-')) return;
+        const key = request.requestKey || request.key || request.profileKey;
+        const status = await firebaseRequest('GET', `${CONFIG.integrationPath}/requests/${key}.json`);
+        if (status && status.requestId === request.requestId && status.status === 'cancelled') showCancellationNotice(status);
+    }
+
     async function init() {
         const pendingCapture = GM_getValue(CONFIG.pendingStorageKey, null);
+        // Poll sempre ativo, inclusive após recarregar enquanto o APEX termina o filtro.
+        pollingTimer = window.setInterval(async () => {
+            try {
+                if (isBusy) await watchBusyCancellation();
+                else await refreshContext(true);
+            } catch (error) { console.warn('[NEXUS] Monitor de solicitações:', error); }
+        }, 3500);
         if (pendingCapture) {
             isBusy = true;
-            lockPanel('Capturando os dados filtrados...');
+            lockPanel('Verificando captura pendente...');
             await resumeCapture(pendingCapture);
-            return;
         }
-
-        await refreshContext();
-        pollingTimer = window.setInterval(() => {
-            if (!isBusy) refreshContext(true).catch(error => {
-                console.error('[CICLOS/PALMAS] Erro ao consultar solicitações:', error);
-                setStatus(`Falha ao consultar o Firebase: ${error.message}`, 'error');
-            });
-        }, CONFIG.requestPollMs);
+        await refreshContext(true);
     }
 
     function isTargetPage() {
@@ -209,7 +314,7 @@
         panel.innerHTML = `
             <div class="ciclos-head">
                 <div>
-                    <div class="ciclos-title">PALMAS • Atualização <span style="font-size:10px;opacity:.8">v1.9</span></div>
+                    <div class="ciclos-title">PALMAS • Atualização <span style="font-size:10px;opacity:.8">v2.0.5</span></div>
                     <div class="ciclos-sub">Notas Perdidas → Nexus PALMAS</div>
                 </div>
                 <button type="button" class="ciclos-close" title="Minimizar">−</button>
@@ -269,7 +374,7 @@
     }
 
     function requestBelongsHere(request) {
-        if (!request || request.status !== 'pending' || !request.profile) return false;
+        if (!request || request.status !== 'pending' || !request.profile || !isNotesRequest(request)) return false;
         const explicitKey = normalizeKey(request.ecosystemKey || request.workspaceKey || request.dataKey || '');
         if (explicitKey && explicitKey !== CONFIG.ecosystemKey) return false;
         return Boolean(localDistributorName(request.profile));
@@ -283,6 +388,7 @@
 
         availableProfiles = extractDistributorNames(profilesRaw);
         const requests = flattenIntegrationRequests(requestsRaw);
+        scanCancelledRequests(requests.filter(request => (!request.ecosystemKey || normalizeKey(request.ecosystemKey) === CONFIG.ecosystemKey) && localDistributorName(request.profile)));
         const newestPending = requests
             .filter(requestBelongsHere)
             .sort((a, b) => Number(b.requestedAt || 0) - Number(a.requestedAt || 0))[0] || null;
@@ -376,10 +482,12 @@
                 distributorId: match.value
             };
 
+            await guardActiveCapture(pendingCapture);
             GM_setValue(CONFIG.pendingStorageKey, pendingCapture);
             setStatus(`PALMAS → “${match.text}”. A página será filtrada agora.`, 'success');
 
             await wait(250);
+            await guardActiveCapture(pendingCapture);
             const filterButton = document.getElementById(CONFIG.filterButtonId)
                 || [...document.querySelectorAll('button')].find(button => normalizeText(button.textContent) === 'filtrar');
             if (filterButton) {
@@ -392,6 +500,11 @@
             }
             throw new Error('O botão Filtrar não foi encontrado nesta página.');
         } catch (error) {
+            if (error?.name === 'CiclosCancelled') {
+                GM_deleteValue(CONFIG.pendingStorageKey);
+                showCancellationNotice(error.cancelledRequest || currentRequest);
+                return;
+            }
             GM_deleteValue(CONFIG.pendingStorageKey);
             isBusy = false;
             unlockPanel();
@@ -401,6 +514,7 @@
 
     async function resumeCapture(pendingCapture) {
         try {
+            await guardActiveCapture(pendingCapture);
             setStatus(`Filtro concluído para “${pendingCapture.profile}”. Aguardando o Oracle APEX finalizar...`, 'warning');
             await waitForDocumentAndApexReady(CONFIG.reportReadyTimeoutMs);
             const collection = await collectAllReportRows();
@@ -411,11 +525,12 @@
                 : [];
             if (countMismatches.length) {
                 const detail = countMismatches.slice(0, 5)
-                    .map(item => item.contagemPagina === null ? `${item.nomeOriginal}: Contagem do rodapé não capturada` : `${item.nomeOriginal}: classificadas ${item.total}, Contagem ${item.contagemPagina}`)
+                    .map(item => `${item.nomeOriginal}: capturadas ${item.total}, Contagem ${item.contagemPagina}`)
                     .join(' | ');
                 throw new Error(`A captura ficou incompleta em ${countMismatches.length} região(ões). ${detail}. Recarregue o relatório e tente novamente.`);
             }
 
+            await guardActiveCapture(pendingCapture);
             setStatus(`Enviando ${payload.validRowCount} registros ao Firebase...`, 'warning');
             const firebaseSafePayload = encodeFirebaseObjectKeys(payload);
             await firebaseRequest(
@@ -424,11 +539,8 @@
                 firebaseSafePayload
             );
 
-            if (pendingCapture.requestKey) {
-                await firebaseRequest(
-                    'PATCH',
-                    `${CONFIG.integrationPath}/requests/${pendingCapture.requestKey}.json`,
-                    {
+            if (pendingCapture.requestKey && !String(pendingCapture.requestId || '').startsWith('manual-')) {
+                await finishRequestIfPending(pendingCapture, {
                         status: 'done',
                         ecosystemKey: CONFIG.ecosystemKey,
                         ecosystemName: CONFIG.ecosystemName,
@@ -438,8 +550,7 @@
                         validRowCount: payload.validRowCount,
                         totalAtrasadas: payload.totals.atrasadas,
                         totalEmDia: payload.totals.emDia
-                    }
-                );
+                });
             }
 
             GM_deleteValue(CONFIG.pendingStorageKey);
@@ -454,6 +565,11 @@
             isBusy = false;
             await refreshContext(true);
         } catch (error) {
+            if (error?.name === 'CiclosCancelled') {
+                GM_deleteValue(CONFIG.pendingStorageKey);
+                showCancellationNotice(error.cancelledRequest || {requestId:pendingCapture.requestId, profile:pendingCapture.profile, type:'system'});
+                return;
+            }
             console.error('[CICLOS/PALMAS] Erro na captura:', error);
             GM_deleteValue(CONFIG.pendingStorageKey);
             setStatus(`Falha na captura: ${error.message}`, 'error');
@@ -466,69 +582,62 @@
     }
 
     async function collectAllReportRows() {
-        return (async () => {
-            let region = await waitForReportRegion(CONFIG.reportReadyTimeoutMs);
-            await waitForReportReady(region, CONFIG.reportReadyTimeoutMs);
+        let region = await waitForReportRegion(CONFIG.reportReadyTimeoutMs);
+        await waitForReportReady(region, CONFIG.reportReadyTimeoutMs);
 
-            const allRows = [];
-            const seen = new Set();
-            const regionFooterCounts = {};
-            const knownGroups = {};
-            let masterHeaders = [];
-            let previousSignature = '';
+        const allRows = [];
+        const seen = new Set();
+        const regionFooterCounts = {};
+        let masterHeaders = [];
+        let previousSignature = '';
 
-            for (let page = 1; page <= CONFIG.maxPaginationPages; page++) {
-                region = findReportRegion() || region;
-                await waitForReportReady(region, CONFIG.paginationTimeoutMs);
+        for (let page = 1; page <= CONFIG.maxPaginationPages; page++) {
+            // O APEX pode reconstruir internamente a região após a paginação.
+            region = findReportRegion() || region;
+            await waitForReportReady(region, CONFIG.paginationTimeoutMs);
 
-                const current = extractCurrentPage(region, knownGroups);
-                if (!masterHeaders.length && current.headers.length) masterHeaders = current.headers;
-                Object.assign(knownGroups, current.groupMetaById || {});
+            const current = extractCurrentPage(region);
+            if (!masterHeaders.length && current.headers.length) masterHeaders = current.headers;
 
-                Object.entries(current.regionFooterCounts || {}).forEach(([key, item]) => {
-                    const count = Number(item?.count);
-                    if (!Number.isFinite(count) || count < 0) return;
-                    const previous = regionFooterCounts[key];
-                    if (!previous || count > Number(previous.count || 0)) {
-                        regionFooterCounts[key] = {
-                            nomeOriginal: String(item?.nomeOriginal || key || '').trim(),
-                            count,
-                            groupId: String(item?.groupId || '').trim()
-                        };
-                    }
-                });
-
-                current.rows.forEach(row => {
-                    const note = String(row.__noteNumberRaw || '').trim();
-                    const group = String(row.__sourceGroupId || row.__controlRegion || '').trim();
-                    const signature = note && note !== '—'
-                        ? `${group}|nota:${note}`
-                        : JSON.stringify(row);
-                    if (!seen.has(signature)) {
-                        seen.add(signature);
-                        allRows.push(row);
-                    }
-                });
-
-                setStatus(`Capturando o relatório: página ${page}, ${allRows.length} registros encontrados...`, 'warning');
-
-                const nextButton = findNextPaginationButton(region);
-                if (!nextButton) break;
-
-                const currentSignature = reportSignature(region);
-                if (currentSignature && currentSignature === previousSignature) break;
-                previousSignature = currentSignature;
-
-                nextButton.click();
-                const changed = await waitForReportChange(currentSignature, CONFIG.paginationTimeoutMs);
-                if (!changed) {
-                    console.warn(`[CICLOS/${CONFIG.ecosystemName}] A paginação não alterou o relatório; a captura foi encerrada na página atual.`);
-                    break;
+            Object.entries(current.regionFooterCounts || {}).forEach(([key, item]) => {
+                const count = Number(item?.count);
+                if (!Number.isFinite(count) || count < 0) return;
+                const previous = regionFooterCounts[key];
+                // Se o APEX repetir o rodapé durante a paginação, mantém a maior contagem.
+                if (!previous || count > Number(previous.count || 0)) {
+                    regionFooterCounts[key] = {
+                        nomeOriginal: String(item?.nomeOriginal || key || '').trim(),
+                        count
+                    };
                 }
-            }
+            });
 
-            return { rows: allRows, headers: masterHeaders, regionFooterCounts, groupMetaById: knownGroups };
-        })();
+            current.rows.forEach(row => {
+                const signature = JSON.stringify(row);
+                if (!seen.has(signature)) {
+                    seen.add(signature);
+                    allRows.push(row);
+                }
+            });
+
+            setStatus(`Capturando o relatório: página ${page}, ${allRows.length} registros encontrados...`, 'warning');
+
+            const nextButton = findNextPaginationButton(region);
+            if (!nextButton) break;
+
+            const currentSignature = reportSignature(region);
+            if (currentSignature && currentSignature === previousSignature) break;
+            previousSignature = currentSignature;
+
+            nextButton.click();
+            const changed = await waitForReportChange(currentSignature, CONFIG.paginationTimeoutMs);
+            if (!changed) {
+                console.warn('[CICLOS/PALMAS] A paginação não alterou o relatório; a captura foi encerrada na página atual.');
+                break;
+            }
+        }
+
+        return { rows: allRows, headers: masterHeaders, regionFooterCounts };
     }
 
     async function waitForDocumentAndApexReady(timeoutMs) {
@@ -698,13 +807,19 @@
         return rect.width > 0 && rect.height > 0;
     }
 
-    function extractCurrentPage(region, knownGroups = {}) {
+    function extractCurrentPage(region) {
         const table = findReportTable(region);
-        if (!table) return { headers: [], rows: [], regionFooterCounts: {}, groupMetaById: { ...knownGroups } };
+        if (!table) return { headers: [], rows: [], regionFooterCounts: {} };
 
         const tableRows = [...table.querySelectorAll('tr')];
+
+        // No HTML real do APEX não existe <thead>. O primeiro <tr> é o cabeçalho
+        // agrupado "Distribuidor: ..., Região: ..." e o segundo contém as 19 colunas.
         const columnHeaderRow = tableRows
-            .map(tr => ({ tr, ths: [...tr.children].filter(cell => cell.tagName === 'TH') }))
+            .map(tr => ({
+                tr,
+                ths: [...tr.children].filter(cell => cell.tagName === 'TH')
+            }))
             .filter(item => item.ths.length > 1)
             .sort((a, b) => {
                 const score = cells => cells.reduce((total, th) => total
@@ -714,58 +829,22 @@
                 return score(b.ths) - score(a.ths) || b.ths.length - a.ths.length;
             })[0] || null;
 
-        // Começa pelos IDs técnicos conhecidos do relatório. Assim, mesmo que o APEX altere
-        // texto/ordem visual, Qtd Remarcada e Cidade continuam sendo lidas da coluna correta.
-        const headerById = new Map(Object.entries(KNOWN_APEX_HEADERS));
         const headerCells = columnHeaderRow?.ths || [];
+        const headerById = new Map();
         const headers = headerCells.map((th, index) => {
-            const label = cleanCellText(th) || KNOWN_APEX_HEADERS[th.id] || `coluna_${index + 1}`;
+            const label = cleanCellText(th) || `coluna_${index + 1}`;
             if (th.id) headerById.set(th.id, label);
             return label;
         });
-
-        const groupMetaById = { ...knownGroups };
-        tableRows.forEach(tr => {
-            const ths = [...tr.children].filter(cell => cell.tagName === 'TH');
-            if (ths.length !== 1) return;
-            const th = ths[0];
-            const colspan = Number(th.getAttribute('colspan') || 1);
-            if (colspan <= 1) return;
-            const group = parseApexControlBreak(cleanCellText(tr));
-            if (!group.distributor && !group.region) return;
-            if (th.id) {
-                groupMetaById[th.id] = {
-                    distributor: group.distributor || '',
-                    region: group.region || ''
-                };
-            }
-        });
-
-        const resolveGroupFromCells = (cells, fallbackDistributor = '', fallbackRegion = '') => {
-            for (const cell of cells) {
-                const attr = String(cell.getAttribute('headers') || '').trim();
-                if (!attr) continue;
-                for (const token of attr.split(/\s+/)) {
-                    if (groupMetaById[token]) {
-                        return {
-                            groupId: token,
-                            distributor: groupMetaById[token].distributor || fallbackDistributor,
-                            region: groupMetaById[token].region || fallbackRegion
-                        };
-                    }
-                }
-            }
-            return { groupId: '', distributor: fallbackDistributor, region: fallbackRegion };
-        };
 
         const rows = [];
         const regionFooterCounts = {};
         let controlDistributor = '';
         let controlRegion = '';
-        let controlGroupId = '';
 
         tableRows.forEach(tr => {
             if (columnHeaderRow && tr === columnHeaderRow.tr) return;
+
             const cells = [...tr.children].filter(cell => cell.tagName === 'TH' || cell.tagName === 'TD');
             if (!cells.length) return;
 
@@ -773,78 +852,56 @@
             const colspan = Number(cells[0].getAttribute('colspan') || 1);
             const isControlBreak = tr.classList.contains('a-IRR-controlBreak')
                 || String(tr.className || '').includes('controlBreak')
-                || (cells.length === 1 && cells[0].tagName === 'TH' && colspan > 1);
+                || (cells.length === 1 && colspan > 1);
 
             if (isControlBreak) {
                 const group = parseApexControlBreak(rowText);
                 if (group.distributor) controlDistributor = group.distributor;
                 if (group.region) controlRegion = group.region;
-                if (cells[0].id) controlGroupId = cells[0].id;
                 return;
             }
 
+            // Linhas de dados do relatório possuem TD. Isso impede que cabeçalhos
+            // auxiliares do APEX sejam interpretados como notas.
             const dataCells = cells.filter(cell => cell.tagName === 'TD');
             if (!dataCells.length) return;
-            const resolvedGroup = resolveGroupFromCells(dataCells, controlDistributor, controlRegion);
-            const rowDistributor = resolvedGroup.distributor || controlDistributor;
-            const rowRegion = resolvedGroup.region || controlRegion;
-            const rowGroupId = resolvedGroup.groupId || controlGroupId;
-
+            // O APEX adiciona uma linha de totalização após cada Região. Ela não é uma nota,
+            // porém a célula "Contagem" é a fonte oficial para validar se capturamos TODAS
+            // as notas daquela Região.
             if (dataCells.some(cell => cell.classList.contains('a-IRR-aggregate'))) {
-                let countCell = dataCells.find(cell => {
-                    const typeNode = cell.querySelector('.a-IRR-aggregate-type');
-                    return typeNode && normalizeText(cleanCellText(typeNode)).includes('contagem');
+                const countCell = dataCells.find(cell => {
+                    const typeText = normalizeText(cleanCellText(cell.querySelector('.a-IRR-aggregate-type') || cell));
+                    return typeText.includes('contagem');
                 });
-                // Fallback do HTML atual: a Contagem fica na coluna Nr Nota.
-                if (!countCell) {
-                    countCell = dataCells.find(cell => {
-                        const attr = String(cell.getAttribute('headers') || '');
-                        return attr.split(/\s+/).includes(APEX_NOTE_NUMBER_HEADER_ID)
-                            && Boolean(cell.querySelector('.a-IRR-aggregate-value'));
-                    });
-                }
-                if (rowRegion && countCell) {
-                    const valueNode = countCell.querySelector('.a-IRR-aggregate-value') || countCell;
-                    const count = parseInteger(cleanCellText(valueNode));
+                if (controlRegion && countCell) {
+                    const valueText = cleanCellText(countCell.querySelector('.a-IRR-aggregate-value') || countCell);
+                    const count = parseInteger(valueText);
                     if (Number.isFinite(count) && count >= 0) {
-                        const regionKey = normalizeKey(rowRegion) || 'sem_regiao';
-                        regionFooterCounts[regionKey] = {
-                            nomeOriginal: rowRegion,
-                            count,
-                            groupId: rowGroupId
-                        };
+                        const regionKey = normalizeKey(controlRegion) || 'sem_regiao';
+                        regionFooterCounts[regionKey] = { nomeOriginal: controlRegion, count };
                     }
                 }
                 return;
             }
 
             const row = {};
-            let noteNumberRaw = '';
             dataCells.forEach((cell, index) => {
                 let key = '';
-                let matchedHeaderId = '';
-                const headersAttr = String(cell.getAttribute('headers') || '').trim();
+                const headersAttr = cell.getAttribute('headers');
                 if (headersAttr) {
                     for (const id of headersAttr.split(/\s+/)) {
                         if (headerById.has(id)) {
                             key = headerById.get(id);
-                            matchedHeaderId = id;
                             break;
                         }
                     }
                 }
                 if (!key) key = headers[index] || `coluna_${index + 1}`;
-                const value = cleanCellText(cell);
-                row[key] = value;
-                if (matchedHeaderId === APEX_NOTE_NUMBER_HEADER_ID) noteNumberRaw = value;
-                if (matchedHeaderId === APEX_QTD_REMARCADA_HEADER_ID) row['Qtd Remarcada'] = value;
-                if (matchedHeaderId === APEX_CITY_HEADER_ID) row['Cidade'] = value;
+                row[key] = cleanCellText(cell);
             });
 
-            if (rowDistributor) row.__controlDistributor = rowDistributor;
-            if (rowRegion) row.__controlRegion = rowRegion;
-            if (rowGroupId) row.__sourceGroupId = rowGroupId;
-            if (noteNumberRaw) row.__noteNumberRaw = noteNumberRaw;
+            if (controlDistributor) row.__controlDistributor = controlDistributor;
+            if (controlRegion) row.__controlRegion = controlRegion;
             if (rowText) row.__sourceRowText = rowText;
 
             const meaningfulValues = Object.entries(row)
@@ -854,7 +911,7 @@
             if (meaningfulValues.length) rows.push(row);
         });
 
-        return { headers, rows, regionFooterCounts, groupMetaById };
+        return { headers, rows, regionFooterCounts };
     }
 
     function parseApexControlBreak(text) {
@@ -928,11 +985,11 @@
         const fields = detectFields(allHeaders);
         if (!rows.length) {
             return {
-                version: 9,
+                version: 8,
                 firebaseKeyEncoding: FIREBASE_KEY_ENCODING,
                 weekGrouping: 'collection',
-                lateCarryRule: 'file-import-equivalent-v3',
-                regionCountRule: 'apex-footer-count-v2',
+                lateCarryRule: 'region-qtd-remarcada-v2-file-rule',
+                regionCountRule: 'apex-footer-count-v1',
                 source: 'tampermonkey-notas-perdidas',
                 requestId: pendingCapture.requestId,
                 requestedAt: pendingCapture.requestedAt,
@@ -1181,7 +1238,7 @@
             const total = atrasadas + emDia;
             const footer = regionFooterCounts?.[regionKey];
             const pageCount = footer && Number.isFinite(Number(footer.count)) ? Number(footer.count) : null;
-            const matches = pageCount !== null && total === pageCount;
+            const matches = pageCount === null ? true : total === pageCount;
             regionTotals[regionKey] = {
                 nomeOriginal: String(region?.nomeOriginal || footer?.nomeOriginal || regionKey || '').trim(),
                 atrasadas,
@@ -1190,9 +1247,6 @@
                 contagemPagina: pageCount,
                 confere: matches
             };
-            region.contagemPagina = pageCount;
-            region.totalClassificado = total;
-            region.contagemConfere = matches;
             if (!matches) {
                 regionCountMismatches.push({
                     regionKey,
@@ -1200,8 +1254,7 @@
                     atrasadas,
                     emDia,
                     total,
-                    contagemPagina: pageCount,
-                    motivo: pageCount === null ? 'contagem-nao-capturada' : 'total-divergente'
+                    contagemPagina: pageCount
                 });
             }
         });
@@ -1219,11 +1272,11 @@
             : totalsByDistributionWeek;
 
         return {
-            version: 9,
+            version: 8,
             firebaseKeyEncoding: FIREBASE_KEY_ENCODING,
             weekGrouping: Object.keys(regionsByCollectionWeek).length ? 'collection' : 'distribution',
-            lateCarryRule: 'file-import-equivalent-v3',
-            regionCountRule: 'apex-footer-count-v2',
+            lateCarryRule: 'region-qtd-remarcada-v2-file-rule',
+            regionCountRule: 'apex-footer-count-v1',
             source: 'tampermonkey-notas-perdidas',
             requestId: pendingCapture.requestId,
             requestedAt: pendingCapture.requestedAt,
@@ -1259,7 +1312,6 @@
             clientsByCity,
             rows: canonicalRows,
             headersDetected: allHeaders,
-            parserVersion: '2.0.5-fixed-apex-ids-group-aware',
             fieldMapping: {
                 ...fields,
                 regionSource: fields.region || '__controlRegion',
