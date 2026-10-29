@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21T17:56:00-03:00",
-  "description": "v2.0.5 corrige definitivamente o fluxo Atualizar pelo Sistema: reconstrói Em Dia/Atrasadas linha a linha com a mesma regra da importação por arquivo, usa IDs técnicos fixos do APEX para Qtd Remarcada/Cidade/Nr Nota, associa cada linha ao grupo de Região pelo ID do cabeçalho e torna a Contagem do rodapé obrigatória e visível no modal.",
+  "updatedAt": "2026-10-28T17:30:00-03:00",
+  "description": "v2.0.5: preserva integralmente a V2.0.4 (Contagem por Região no APEX, atrasadas/em dia, chaves Firebase, perfis e backups); acrescenta cancelamento de solicitação via Firebase com modal OK e liberação segura do Tampermonkey; versões anteriores disponíveis para rollback.",
   "channels": {
     "teresina": {
       "version": "2.0.5",
       "path": "releases/2.0.5/teresina/nexus-teresina.js",
-      "sha256": "386fdbac11cb92b0bf63fca31a8277989fe4c8cbe16892ef05b27e16c6874fa5",
+      "sha256": "f2c7c799c95dd2433cbc5854fae19f6f68578f330b6720de0dc05ae31b68ab0e",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
       "version": "2.0.5",
       "path": "releases/2.0.5/palmas/nexus-palmas.js",
-      "sha256": "bfaa7532c6d93c6fee5875d8cf4f3229691370ee294b30270fe677f8ee945c9c",
+      "sha256": "f1bdff357050b72e188ee3bb2726d89dfbe17a0b74507f6d5b05f050abe1cbbc",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
