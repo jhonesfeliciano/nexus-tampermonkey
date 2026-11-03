@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-28T17:30:00-03:00",
-  "description": "v2.0.5: preserva integralmente a V2.0.4 (Contagem por Região no APEX, atrasadas/em dia, chaves Firebase, perfis e backups); acrescenta cancelamento de solicitação via Firebase com modal OK e liberação segura do Tampermonkey; versões anteriores disponíveis para rollback.",
+  "updatedAt": "2026-11-03T16:25:00-03:00",
+  "description": "v2.0.6: identifica o distribuidor real em cada cabeçalho agrupado APEX, valida Contagem por distribuidor+região e separa notas alheias sem interferir nos totais do selecionado. Mantém cancelamento V2.0.5, versões anteriores, backups, Firebase e auditoria.",
   "channels": {
     "teresina": {
-      "version": "2.0.5",
-      "path": "releases/2.0.5/teresina/nexus-teresina.js",
-      "sha256": "f2c7c799c95dd2433cbc5854fae19f6f68578f330b6720de0dc05ae31b68ab0e",
+      "version": "2.0.6",
+      "path": "releases/2.0.6/teresina/nexus-teresina.js",
+      "sha256": "23aed086e905e923e95f64d23a86c566801e4a2ec0707ab4b3381d7bb857946e",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
-      "version": "2.0.5",
-      "path": "releases/2.0.5/palmas/nexus-palmas.js",
-      "sha256": "f1bdff357050b72e188ee3bb2726d89dfbe17a0b74507f6d5b05f050abe1cbbc",
+      "version": "2.0.6",
+      "path": "releases/2.0.6/palmas/nexus-palmas.js",
+      "sha256": "1750628652e133eee53cfa6771bed27c39e8cdd5c039593e86c491198181ab34",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
