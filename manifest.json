@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-03T16:25:00-03:00",
-  "description": "v2.0.6: identifica o distribuidor real em cada cabeçalho agrupado APEX, valida Contagem por distribuidor+região e separa notas alheias sem interferir nos totais do selecionado. Mantém cancelamento V2.0.5, versões anteriores, backups, Firebase e auditoria.",
+  "updatedAt": "2026-11-12T10:32:00-03:00",
+  "description": "v2.0.7: corrige o agrupamento em níveis do Oracle APEX 26.2. Mantém o distribuidor ativo quando o cabeçalho Região aparece em linha separada; valida notas e Contagem por proprietário + região. Preserva cancelamento, Firebase, backups e auditoria.",
   "channels": {
     "teresina": {
-      "version": "2.0.6",
-      "path": "releases/2.0.6/teresina/nexus-teresina.js",
-      "sha256": "23aed086e905e923e95f64d23a86c566801e4a2ec0707ab4b3381d7bb857946e",
+      "version": "2.0.7",
+      "path": "releases/2.0.7/teresina/nexus-teresina.js",
+      "sha256": "c6777b8a557cb0346f7471789189a6624208c117a2c9d550dfe3ddb1e6d638c3",
       "ecosystemKey": "teresina",
       "ecosystemName": "TERESINA"
     },
     "palmas": {
-      "version": "2.0.6",
-      "path": "releases/2.0.6/palmas/nexus-palmas.js",
-      "sha256": "1750628652e133eee53cfa6771bed27c39e8cdd5c039593e86c491198181ab34",
+      "version": "2.0.7",
+      "path": "releases/2.0.7/palmas/nexus-palmas.js",
+      "sha256": "1430d28cf6755da151bb685715a1c18f0dd6317c2c1c1326c37433de621a1fa2",
       "ecosystemKey": "palmas",
       "ecosystemName": "PALMAS"
     }
